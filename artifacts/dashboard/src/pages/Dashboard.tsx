@@ -7,6 +7,7 @@ import { ClosedTradesFeed } from "@/components/ClosedTradesFeed";
 import { DevsTable, UnknownsTable } from "@/components/DevsTable";
 import { LaunchesTicker } from "@/components/LaunchesTicker";
 import { SystemHealthStrip } from "@/components/SystemHealthStrip";
+import { HealthAlertBanner } from "@/components/HealthAlertBanner";
 import { Pulse } from "@/components/ui/Pulse";
 import { api } from "@/lib/api";
 import { formatSol, formatPct, lamToSol, formatAgeS } from "@/lib/format";
@@ -139,6 +140,9 @@ export function Dashboard() {
           )}
         </div>
       </header>
+
+      {/* ── Health alert banner — only rendered when a metric is red ── */}
+      <HealthAlertBanner health={health} />
 
       {/* ── Scrollable body — single column < 1024px, grid ≥ 1024px ── */}
       <div className="flex-1 overflow-auto">
