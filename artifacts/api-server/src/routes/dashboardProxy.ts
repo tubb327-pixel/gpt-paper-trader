@@ -5,11 +5,15 @@ const UPSTREAM = "https://snipesatbig.tubbsgrabberbrah.us";
 
 export function registerDashboardProxy(app: Express) {
   app.use("/dashboard-proxy", async (req, res) => {
+    if (req.method !== "GET") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
     const token = process.env["DASHBOARD_API_TOKEN"];
     if (!token) {
       res.status(500).json({
-        error:
-          "DASHBOARD_API_TOKEN is not set. Add it in Replit Secrets.",
+        error: "DASHBOARD_API_TOKEN is not set. Add it in Replit Secrets.",
       });
       return;
     }
@@ -22,6 +26,7 @@ export function registerDashboardProxy(app: Express) {
 
     try {
       const upstream = await fetch(upstreamUrl, {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
