@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { formatAgeS } from "@/lib/format";
 import type { SystemHealth } from "@/lib/types";
 
@@ -10,7 +11,7 @@ interface Alert {
   message: string;
 }
 
-export function HealthAlertBanner({ health }: HealthAlertBannerProps) {
+function computeAlerts(health: SystemHealth | undefined): Alert[] {
   const alerts: Alert[] = [];
 
   const ingestorAge = health?.ingestor_heartbeat_age_s ?? null;
@@ -37,6 +38,62 @@ export function HealthAlertBanner({ health }: HealthAlertBannerProps) {
       message: `Low event rate — ${eps.toFixed(1)} eps (expected ≥ 10)`,
     });
   }
+
+  return alerts;
+}
+
+function useHealthAlertNotifications(health: SystemHealth | undefined) {
+  const prevKeysRef = useRef<Set<string> | null>(null);
+  const permissionRequestedRef = useRef(false);
+
+  useEffect(() => {
+    if (health === undefined) return;
+    if (!("Notification" in window)) return;
+
+    const alerts = computeAlerts(health);
+    const currentKeys = new Set(alerts.map((a) => a.key));
+
+    if (prevKeysRef.current === null) {
+      prevKeysRef.current = currentKeys;
+      return;
+    }
+
+    const prevKeys = prevKeysRef.current;
+    const newAlerts = alerts.filter((a) => !prevKeys.has(a.key));
+    prevKeysRef.current = currentKeys;
+
+    if (newAlerts.length === 0) return;
+
+    const fireNotifications = () => {
+      newAlerts.forEach((alert) => {
+        new Notification("GPT Paper Trader — Health Alert", {
+          body: alert.message,
+          icon: "/favicon.ico",
+          tag: alert.key,
+        });
+      });
+    };
+
+    if (Notification.permission === "granted") {
+      fireNotifications();
+    } else if (
+      Notification.permission === "default" &&
+      !permissionRequestedRef.current
+    ) {
+      permissionRequestedRef.current = true;
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") {
+          fireNotifications();
+        }
+      });
+    }
+  }, [health]);
+}
+
+export function HealthAlertBanner({ health }: HealthAlertBannerProps) {
+  const alerts = computeAlerts(health);
+
+  useHealthAlertNotifications(health);
 
   if (alerts.length === 0) return null;
 
