@@ -9,7 +9,7 @@ import {
   DoughnutController,
 } from "chart.js";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/DashCard";
 import { formatPct } from "@/lib/format";
 
 Chart.register(ArcElement, Tooltip, Legend, DoughnutController);

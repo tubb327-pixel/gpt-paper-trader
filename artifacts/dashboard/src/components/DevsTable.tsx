@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/DashCard";
 import type { Archetype, DevRow } from "@/lib/types";
 
 const ARCHETYPE_DOT: Record<Archetype, string> = {

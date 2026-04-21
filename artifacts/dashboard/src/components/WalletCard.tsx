@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/DashCard";
 import {
   formatSol,
   lamToSol,

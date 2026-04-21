@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/DashCard";
 import { formatAge, formatMc, formatPct, formatSolRaw } from "@/lib/format";
 import type { Archetype, SystemHealth } from "@/lib/types";
 

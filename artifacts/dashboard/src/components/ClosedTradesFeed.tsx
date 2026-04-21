@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, Fragment } from "react";
 import { ChevronDown, ChevronRight, ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/DashCard";
 import { Pill } from "@/components/ui/Pill";
 import { formatTimeCst, formatDateGroupCst, formatPct } from "@/lib/format";
 import type { ClosedTrade } from "@/lib/types";
