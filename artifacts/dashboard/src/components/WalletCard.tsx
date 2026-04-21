@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/DashCard";
 import {
@@ -16,6 +16,56 @@ interface WalletCardProps {
   health: SystemHealth | undefined;
 }
 
+function PnlSparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+
+  const W = 120;
+  const H = 32;
+  const PAD = 2;
+
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+
+  const xs = points.map((_, i) => PAD + (i / (points.length - 1)) * (W - PAD * 2));
+  const ys = points.map((v) => PAD + (1 - (v - min) / range) * (H - PAD * 2));
+
+  const polyline = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+
+  const trending = points[points.length - 1] >= points[0];
+  const color = trending ? "#00d4aa" : "#ff4757";
+
+  const areaPoints = [
+    `${xs[0]},${H}`,
+    ...xs.map((x, i) => `${x},${ys[i]}`),
+    `${xs[xs.length - 1]},${H}`,
+  ].join(" ");
+
+  return (
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      className="overflow-visible"
+      aria-hidden="true"
+    >
+      <polygon
+        points={areaPoints}
+        fill={color}
+        fillOpacity={0.12}
+      />
+      <polyline
+        points={polyline}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function WalletCard({ health }: WalletCardProps) {
   const [copied, setCopied] = useState(false);
   const { data: wallet, isError, error } = useQuery({
@@ -24,6 +74,27 @@ export function WalletCard({ health }: WalletCardProps) {
     refetchInterval: 5000,
     staleTime: 0,
   });
+
+  const { data: closedTrades } = useQuery({
+    queryKey: ["closedTrades", 500],
+    queryFn: () => api.closedTrades(500),
+    refetchInterval: 5000,
+    staleTime: 0,
+  });
+
+  const sparklinePoints = useMemo(() => {
+    if (!closedTrades || closedTrades.length === 0) return [];
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = closedTrades
+      .filter((t) => t.exit_at != null && new Date(t.exit_at).getTime() >= cutoff)
+      .sort((a, b) => new Date(a.exit_at!).getTime() - new Date(b.exit_at!).getTime());
+    if (recent.length < 2) return [];
+    let cum = 0;
+    return recent.map((t) => {
+      cum += t.sol_pnl ?? 0;
+      return cum;
+    });
+  }, [closedTrades]);
 
   const solUsd = health?.sol_usd ?? 0;
 
@@ -92,6 +163,14 @@ export function WalletCard({ health }: WalletCardProps) {
             {pnlSol != null && solUsd > 0
               ? ` · ${formatUsd((pnlSol ?? 0) * solUsd)}`
               : ""}
+          </div>
+          <div className="mt-2" style={{ minHeight: 44 }}>
+            {sparklinePoints.length >= 2 && (
+              <>
+                <PnlSparkline points={sparklinePoints} />
+                <div className="text-[10px] text-[#8b8b9a] mt-0.5">last 24h</div>
+              </>
+            )}
           </div>
         </div>
 
