@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { formatAge, formatMc, formatPct, formatSolRaw } from "@/lib/format";
@@ -31,7 +31,7 @@ interface PositionsTableProps {
 export function PositionsTable({ health }: PositionsTableProps) {
   const [tick, setTick] = useState(0);
 
-  const { data: positions = [] } = useQuery({
+  const { data: positions = [], isError, error } = useQuery({
     queryKey: ["positions"],
     queryFn: api.positions,
     refetchInterval: 5000,
@@ -47,10 +47,16 @@ export function PositionsTable({ health }: PositionsTableProps) {
 
   return (
     <Card title="Open Positions" className="h-full">
+      {isError && (
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#2a1010] border-b border-[#ff4757] text-[#ff4757] text-[11px]">
+          <AlertTriangle size={12} />
+          <span>{error instanceof Error ? error.message : "fetch error"} — showing last values</span>
+        </div>
+      )}
       <div className="overflow-auto h-full">
         <table className="w-full text-[12px]">
           <thead>
-            <tr className="text-[#8b8b9a] border-b border-[#1f1f2e] text-left">
+            <tr className="text-[#8b8b9a] border-b border-[#1f1f2e] text-left sticky top-0 bg-[#12121a]">
               <th className="px-3 py-2 font-medium">Type</th>
               <th className="px-3 py-2 font-medium">Symbol</th>
               <th className="px-3 py-2 font-medium text-right">Age</th>
@@ -64,25 +70,21 @@ export function PositionsTable({ health }: PositionsTableProps) {
           <tbody>
             {positions.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center text-[#8b8b9a] py-10">
+                <td colSpan={8} className="text-center text-[#8b8b9a] py-10 text-[12px]">
                   No open positions
                 </td>
               </tr>
             )}
             {positions.map((pos) => {
-              const entryMc =
-                solUsd > 0 ? formatMc(pos.entry_price, solUsd) : "—";
+              const entryMc = solUsd > 0 ? formatMc(pos.entry_price, solUsd) : "—";
               const currentMc =
                 pos.current_price != null && solUsd > 0
                   ? formatMc(pos.current_price, solUsd)
                   : "—";
 
-              const entryPriceToken = pos.entry_price;
-              const currentPriceToken = pos.current_price;
               const unrPct =
-                entryPriceToken > 0 && currentPriceToken != null
-                  ? ((currentPriceToken - entryPriceToken) / entryPriceToken) *
-                    100
+                pos.entry_price > 0 && pos.current_price != null
+                  ? ((pos.current_price - pos.entry_price) / pos.entry_price) * 100
                   : null;
 
               const positionSol =
@@ -102,12 +104,8 @@ export function PositionsTable({ health }: PositionsTableProps) {
                 >
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full flex-shrink-0 ${ARCHETYPE_DOT[arch]}`}
-                      />
-                      <span className="text-[#8b8b9a] text-[10px]">
-                        {ARCHETYPE_LABEL[arch]}
-                      </span>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ARCHETYPE_DOT[arch]}`} />
+                      <span className="text-[#8b8b9a] text-[10px]">{ARCHETYPE_LABEL[arch]}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -118,57 +116,32 @@ export function PositionsTable({ health }: PositionsTableProps) {
                   <td className="px-3 py-2 text-right font-mono text-[#e8e8f0] tabular-nums">
                     {tick >= 0 ? formatAge(pos.entry_at) : ""}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-[#e8e8f0] tabular-nums">
-                    {entryMc}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[#e8e8f0] tabular-nums">
-                    {currentMc}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${
-                      posPositive ? "text-[#00d4aa]" : "text-[#ff4757]"
-                    }`}
-                  >
+                  <td className="px-3 py-2 text-right font-mono text-[#e8e8f0] tabular-nums">{entryMc}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[#e8e8f0] tabular-nums">{currentMc}</td>
+                  <td className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${posPositive ? "text-[#00d4aa]" : "text-[#ff4757]"}`}>
                     {formatPct(unrPct)}
                   </td>
-                  <td
-                    className={`px-3 py-2 text-right font-mono tabular-nums ${
-                      posPositive ? "text-[#00d4aa]" : "text-[#ff4757]"
-                    }`}
-                  >
-                    {unrSol != null
-                      ? `${unrSol >= 0 ? "+" : ""}${formatSolRaw(unrSol)}`
-                      : "—"}
+                  <td className={`px-3 py-2 text-right font-mono tabular-nums ${posPositive ? "text-[#00d4aa]" : "text-[#ff4757]"}`}>
+                    {unrSol != null ? `${unrSol >= 0 ? "+" : ""}${formatSolRaw(unrSol)}` : "—"}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1 justify-center">
-                      <a
-                        href={`https://pump.fun/coin/${pos.mint}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#8b8b9a] hover:text-[#e8e8f0] transition-colors"
-                        title="pump.fun"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
-                      <a
-                        href={`https://dexscreener.com/solana/${pos.mint}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#8b8b9a] hover:text-[#e8e8f0] transition-colors"
-                        title="DexScreener"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
-                      <a
-                        href={`https://solscan.io/token/${pos.mint}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#8b8b9a] hover:text-[#e8e8f0] transition-colors"
-                        title="Solscan"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
+                      {[
+                        [`https://pump.fun/coin/${pos.mint}`, "P"],
+                        [`https://dexscreener.com/solana/${pos.mint}`, "D"],
+                        [`https://solscan.io/token/${pos.mint}`, "S"],
+                      ].map(([href, label]) => (
+                        <a
+                          key={label}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#8b8b9a] hover:text-[#e8e8f0] transition-colors"
+                          title={href}
+                        >
+                          <ExternalLink size={12} />
+                        </a>
+                      ))}
                     </div>
                   </td>
                 </tr>

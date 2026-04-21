@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { AlertTriangle } from "lucide-react";
 import {
   Chart,
   ArcElement,
@@ -33,7 +34,7 @@ export function ExitReasonsDonut() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
-  const { data: reasons = [] } = useQuery({
+  const { data: reasons = [], isError, error } = useQuery({
     queryKey: ["exitReasons"],
     queryFn: api.exitReasons,
     refetchInterval: 5000,
@@ -46,10 +47,7 @@ export function ExitReasonsDonut() {
 
   useEffect(() => {
     if (!canvasRef.current || reasons.length === 0) return;
-
-    if (chartRef.current) {
-      chartRef.current.destroy();
-    }
+    if (chartRef.current) chartRef.current.destroy();
 
     chartRef.current = new Chart(canvasRef.current, {
       type: "doughnut",
@@ -91,13 +89,17 @@ export function ExitReasonsDonut() {
       },
     });
 
-    return () => {
-      chartRef.current?.destroy();
-    };
+    return () => { chartRef.current?.destroy(); };
   }, [reasons]);
 
   return (
     <Card title="Exit Mix (All-Time)" className="h-full">
+      {isError && (
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#2a1010] border-b border-[#ff4757] text-[#ff4757] text-[11px]">
+          <AlertTriangle size={12} />
+          <span>{error instanceof Error ? error.message : "fetch error"} — showing last values</span>
+        </div>
+      )}
       <div className="px-3 py-3 flex flex-col gap-3 h-full">
         {reasons.length === 0 ? (
           <div className="text-[#8b8b9a] text-sm text-center py-6">No data</div>
@@ -135,25 +137,13 @@ export function ExitReasonsDonut() {
                             {row.exit_reason ?? "unknown"}
                           </span>
                         </td>
-                        <td className="py-1 text-right font-mono text-[#e8e8f0] tabular-nums">
-                          {row.n}
-                        </td>
-                        <td
-                          className={`py-1 text-right font-mono tabular-nums ${
-                            pnlPos ? "text-[#00d4aa]" : "text-[#ff4757]"
-                          }`}
-                        >
+                        <td className="py-1 text-right font-mono text-[#e8e8f0] tabular-nums">{row.n}</td>
+                        <td className={`py-1 text-right font-mono tabular-nums ${pnlPos ? "text-[#00d4aa]" : "text-[#ff4757]"}`}>
                           {row.total_pnl_sol != null
                             ? `${pnlPos ? "+" : ""}${row.total_pnl_sol.toFixed(3)}`
                             : "—"}
                         </td>
-                        <td
-                          className={`py-1 text-right font-mono tabular-nums ${
-                            (row.avg_return_pct ?? 0) >= 0
-                              ? "text-[#00d4aa]"
-                              : "text-[#ff4757]"
-                          }`}
-                        >
+                        <td className={`py-1 text-right font-mono tabular-nums ${(row.avg_return_pct ?? 0) >= 0 ? "text-[#00d4aa]" : "text-[#ff4757]"}`}>
                           {formatPct(row.avg_return_pct ?? null)}
                         </td>
                       </tr>

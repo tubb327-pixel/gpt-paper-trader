@@ -3,7 +3,7 @@ import type { SystemHealth } from "@/lib/types";
 
 interface SystemHealthStripProps {
   health: SystemHealth | undefined;
-  lastUpdateMs: number | null;
+  apiLatencyMs: number | null;
 }
 
 function HealthItem({
@@ -16,7 +16,7 @@ function HealthItem({
   isStale: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 flex-shrink-0">
       <span className="text-[#555566] text-[10px]">{label}</span>
       <span
         className={`font-mono text-[11px] tabular-nums ${
@@ -29,20 +29,15 @@ function HealthItem({
   );
 }
 
-export function SystemHealthStrip({ health, lastUpdateMs }: SystemHealthStripProps) {
+export function SystemHealthStrip({ health, apiLatencyMs }: SystemHealthStripProps) {
   const eps = health?.events_per_sec_60s ?? null;
   const ingestorAge = health?.ingestor_heartbeat_age_s ?? null;
   const telegramAge = health?.telegram_bot_heartbeat_age_s ?? null;
   const solUsd = health?.sol_usd ?? null;
   const solUsdAge = health?.sol_usd_cache_age_s ?? null;
 
-  const lastUpdateSec =
-    lastUpdateMs != null
-      ? Math.floor((Date.now() - lastUpdateMs) / 1000)
-      : null;
-
   return (
-    <div className="bg-[#0e0e16] border-t border-[#1f1f2e] h-10 flex items-center px-4 gap-6 overflow-x-auto">
+    <div className="bg-[#0e0e16] border-t border-[#1f1f2e] h-10 flex items-center px-4 gap-5 overflow-x-auto flex-shrink-0">
       <HealthItem
         label="eps"
         value={eps != null ? eps.toFixed(1) : "—"}
@@ -77,11 +72,11 @@ export function SystemHealthStrip({ health, lastUpdateMs }: SystemHealthStripPro
         value={health?.score_events_5m != null ? String(health.score_events_5m) : "—"}
         isStale={false}
       />
-      {lastUpdateSec != null && (
-        <div className="ml-auto text-[10px] text-[#555566] whitespace-nowrap">
-          last update: {lastUpdateSec}s ago
-        </div>
-      )}
+      <HealthItem
+        label="api"
+        value={apiLatencyMs != null ? `${apiLatencyMs}ms` : "—"}
+        isStale={apiLatencyMs != null && apiLatencyMs > 500}
+      />
     </div>
   );
 }
