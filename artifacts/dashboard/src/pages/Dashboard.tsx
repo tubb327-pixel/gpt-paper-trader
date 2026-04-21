@@ -1,5 +1,5 @@
 import { useQuery, useIsFetching } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { WalletCard } from "@/components/WalletCard";
 import { PositionsTable } from "@/components/PositionsTable";
 import { ExitReasonsDonut } from "@/components/ExitReasonsDonut";
@@ -14,7 +14,6 @@ import { formatSol, formatPct, lamToSol, formatAgeS } from "@/lib/format";
 export function Dashboard() {
   const [lastUpdateMs, setLastUpdateMs] = useState<number | null>(null);
   const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null);
-  const fetchStartRef = useRef<number | null>(null);
   const isFetching = useIsFetching();
 
   const { data: health } = useQuery({
@@ -37,9 +36,7 @@ export function Dashboard() {
   });
 
   useEffect(() => {
-    if (isFetching > 0) {
-      fetchStartRef.current = Date.now();
-    } else {
+    if (isFetching === 0) {
       setLastUpdateMs(Date.now());
     }
   }, [isFetching]);
