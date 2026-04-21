@@ -66,8 +66,17 @@ function PnlSparkline({ points }: { points: number[] }) {
   );
 }
 
+const SPARKLINE_RANGES = [
+  { label: "1h", hours: 1 },
+  { label: "6h", hours: 6 },
+  { label: "24h", hours: 24 },
+] as const;
+
+type SparklineRange = (typeof SPARKLINE_RANGES)[number]["hours"];
+
 export function WalletCard({ health }: WalletCardProps) {
   const [copied, setCopied] = useState(false);
+  const [sparklineRange, setSparklineRange] = useState<SparklineRange>(24);
   const { data: wallet, isError, error } = useQuery({
     queryKey: ["wallet"],
     queryFn: api.wallet,
@@ -84,7 +93,7 @@ export function WalletCard({ health }: WalletCardProps) {
 
   const sparklinePoints = useMemo(() => {
     if (!closedTrades || closedTrades.length === 0) return [];
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - sparklineRange * 60 * 60 * 1000;
     const recent = closedTrades
       .filter((t) => t.exit_at != null && new Date(t.exit_at).getTime() >= cutoff)
       .sort((a, b) => new Date(a.exit_at!).getTime() - new Date(b.exit_at!).getTime());
@@ -94,7 +103,7 @@ export function WalletCard({ health }: WalletCardProps) {
       cum += t.sol_pnl ?? 0;
       return cum;
     });
-  }, [closedTrades]);
+  }, [closedTrades, sparklineRange]);
 
   const solUsd = health?.sol_usd ?? 0;
 
@@ -164,13 +173,34 @@ export function WalletCard({ health }: WalletCardProps) {
               ? ` · ${formatUsd((pnlSol ?? 0) * solUsd)}`
               : ""}
           </div>
-          <div className="mt-2" style={{ minHeight: 44 }}>
-            {sparklinePoints.length >= 2 && (
-              <>
+          <div className="mt-2">
+            <div style={{ minHeight: 32 }}>
+              {sparklinePoints.length >= 2 ? (
                 <PnlSparkline points={sparklinePoints} />
-                <div className="text-[10px] text-[#8b8b9a] mt-0.5">last 24h</div>
-              </>
-            )}
+              ) : (
+                <div className="text-[10px] text-[#8b8b9a] leading-8">no trades in window</div>
+              )}
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <div className="text-[10px] text-[#8b8b9a]">
+                last {SPARKLINE_RANGES.find((r) => r.hours === sparklineRange)?.label}
+              </div>
+              <div className="flex gap-0.5">
+                {SPARKLINE_RANGES.map(({ label, hours }) => (
+                  <button
+                    key={hours}
+                    onClick={() => setSparklineRange(hours)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded-sm transition-colors ${
+                      sparklineRange === hours
+                        ? "bg-[#1a3d30] text-[#00d4aa] border border-[#00d4aa33]"
+                        : "text-[#8b8b9a] hover:text-[#e8e8f0] border border-transparent"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
