@@ -16,6 +16,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+- **GPT Paper Trader Dashboard** (`artifacts/dashboard`) — React + Vite dark dashboard at `/`. Polls 8 endpoints via `/dashboard-proxy/*` every 5s. Requires `DASHBOARD_API_TOKEN` secret.
+- **API Server** (`artifacts/api-server`) — Express 5 server at `/api` and `/dashboard-proxy`. Proxies dashboard requests to `https://snipesatbig.tubbsgrabberbrah.us` with the bearer token.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

@@ -1,7 +1,7 @@
 import { type Express } from "express";
 import { logger } from "../lib/logger";
 
-const UPSTREAM = "https://34.186.65.190.sslip.io";
+const UPSTREAM = "https://snipesatbig.tubbsgrabberbrah.us";
 
 export function registerDashboardProxy(app: Express) {
   app.use("/dashboard-proxy", async (req, res) => {
