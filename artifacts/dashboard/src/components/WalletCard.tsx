@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, AlertTriangle } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/DashCard";
 import {
@@ -16,23 +16,32 @@ interface WalletCardProps {
   health: SystemHealth | undefined;
 }
 
-function PnlSparkline({ points }: { points: number[] }) {
+interface SparklinePoint {
+  value: number;
+  time: Date;
+}
+
+function PnlSparkline({ points }: { points: SparklinePoint[] }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
   if (points.length < 2) return null;
 
   const W = 120;
   const H = 32;
   const PAD = 2;
 
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   const range = max - min || 1;
 
-  const xs = points.map((_, i) => PAD + (i / (points.length - 1)) * (W - PAD * 2));
-  const ys = points.map((v) => PAD + (1 - (v - min) / range) * (H - PAD * 2));
+  const xs = values.map((_, i) => PAD + (i / (values.length - 1)) * (W - PAD * 2));
+  const ys = values.map((v) => PAD + (1 - (v - min) / range) * (H - PAD * 2));
 
   const polyline = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
 
-  const trending = points[points.length - 1] >= points[0];
+  const trending = values[values.length - 1] >= values[0];
   const color = trending ? "#00d4aa" : "#ff4757";
 
   const areaPoints = [
@@ -41,19 +50,62 @@ function PnlSparkline({ points }: { points: number[] }) {
     `${xs[xs.length - 1]},${H}`,
   ].join(" ");
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * W;
+      let closest = 0;
+      let minDist = Infinity;
+      xs.forEach((x, i) => {
+        const dist = Math.abs(x - mouseX);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      });
+      setHoveredIndex(closest);
+    },
+    [xs],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredIndex(null);
+  }, []);
+
+  const hovered = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const hx = hoveredIndex !== null ? xs[hoveredIndex] : null;
+  const hy = hoveredIndex !== null ? ys[hoveredIndex] : null;
+
+  const tooltipLabel =
+    hovered != null
+      ? `${hovered.value >= 0 ? "+" : ""}${hovered.value.toFixed(3)} SOL`
+      : null;
+
+  const tooltipTime =
+    hovered != null
+      ? hovered.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
+
+  const TOOLTIP_W = 72;
+  const TOOLTIP_H = 24;
+  const tooltipX =
+    hx != null ? Math.min(Math.max(hx - TOOLTIP_W / 2, 0), W - TOOLTIP_W) : 0;
+  const tooltipY = hy != null ? hy - TOOLTIP_H - 5 : 0;
+
   return (
     <svg
+      ref={svgRef}
       width={W}
       height={H}
       viewBox={`0 0 ${W} ${H}`}
-      className="overflow-visible"
+      className="overflow-visible cursor-crosshair"
       aria-hidden="true"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <polygon
-        points={areaPoints}
-        fill={color}
-        fillOpacity={0.12}
-      />
+      <polygon points={areaPoints} fill={color} fillOpacity={0.12} />
       <polyline
         points={polyline}
         fill="none"
@@ -62,6 +114,55 @@ function PnlSparkline({ points }: { points: number[] }) {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
+
+      {hoveredIndex !== null && hx != null && hy != null && (
+        <>
+          <line
+            x1={hx}
+            y1={PAD}
+            x2={hx}
+            y2={H - PAD}
+            stroke={color}
+            strokeWidth={0.75}
+            strokeDasharray="2 2"
+            opacity={0.6}
+          />
+          <circle cx={hx} cy={hy} r={2.5} fill={color} />
+
+          <rect
+            x={tooltipX}
+            y={tooltipY}
+            width={TOOLTIP_W}
+            height={TOOLTIP_H}
+            rx={3}
+            fill="#1a1a2e"
+            stroke={color}
+            strokeWidth={0.75}
+            strokeOpacity={0.6}
+          />
+          <text
+            x={tooltipX + TOOLTIP_W / 2}
+            y={tooltipY + 9}
+            textAnchor="middle"
+            fill={color}
+            fontSize={7.5}
+            fontFamily="monospace"
+            fontWeight="600"
+          >
+            {tooltipLabel}
+          </text>
+          <text
+            x={tooltipX + TOOLTIP_W / 2}
+            y={tooltipY + 19}
+            textAnchor="middle"
+            fill="#8b8b9a"
+            fontSize={6.5}
+            fontFamily="monospace"
+          >
+            {tooltipTime}
+          </text>
+        </>
+      )}
     </svg>
   );
 }
@@ -91,7 +192,7 @@ export function WalletCard({ health }: WalletCardProps) {
     staleTime: 0,
   });
 
-  const sparklinePoints = useMemo(() => {
+  const sparklinePoints = useMemo((): SparklinePoint[] => {
     if (!closedTrades || closedTrades.length === 0) return [];
     const cutoff = Date.now() - sparklineRange * 60 * 60 * 1000;
     const recent = closedTrades
@@ -101,7 +202,7 @@ export function WalletCard({ health }: WalletCardProps) {
     let cum = 0;
     return recent.map((t) => {
       cum += t.sol_pnl ?? 0;
-      return cum;
+      return { value: cum, time: new Date(t.exit_at!) };
     });
   }, [closedTrades, sparklineRange]);
 
